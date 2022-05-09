@@ -1,6 +1,7 @@
 package com.company;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -9,21 +10,51 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) {
         HttpClient client = HttpClient.newHttpClient();
-        for (int i = 200; i < 2000; i++) {
-            URI uri = URI.create("https://prnt.sc/dc" + number4(i));
-            System.out.println(number4(i));
-            HttpResponse<String> response = client.send(request(uri), HttpResponse.BodyHandlers.ofString());
-            String body = response.body();
-            String address = findPictureURLAddress(body);
-            saveAsFile(address,
-                    "C:\\Users\\Anatoly\\IdeaProjects\\screenshotparser\\download\\" + i + ".png");
+        Scanner scn = new Scanner(System.in);
+        String prefix = "";
+        int from = 0;
+        int to = 0;
+        boolean flag = true;
+
+        while (flag) {
+            try {
+                System.out.print("От: ");
+                from = scn.nextInt();
+                System.out.print("До: ");
+                to = scn.nextInt();
+                scn.nextLine();
+                System.out.print("Префикс: ");
+                prefix = scn.nextLine();
+            } catch (Throwable e) {
+                System.out.println(e.getMessage());
+            }
+            flag = (prefix.length() != 2) || !(from < to);
+            if (flag) {
+                System.out.println("Длина префикса - две латинские буквы, числа - от 0 до 9999");
+            }
+        }
+
+        for (int i = from; i <= to; i++) {
+            String prefixAndNumber = prefix + number4(i);
+            URI uri = URI.create("https://prnt.sc/" + prefixAndNumber);
+            System.out.println("Downloading: " + prefixAndNumber + ".png");
+            try {
+                HttpResponse<String> response = client.send(request(uri), HttpResponse.BodyHandlers.ofString());
+                String body = response.body();
+                String address = findPictureURLAddress(body);
+                saveAsFile(address,
+                        "C:\\Users\\Anatoly\\IdeaProjects\\screenshotparser\\download\\" + prefixAndNumber + ".png");
+            } catch (RuntimeException | IOException | InterruptedException e) {
+                System.err.println(e.getMessage());
+            }
         }
     }
 
