@@ -10,21 +10,40 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Main {
+public class PrntScParser {
 
-    public static void main(String[] args) {
-        HttpClient client = HttpClient.newHttpClient();
-        Scanner scn = new Scanner(System.in);
-        String prefix = "";
-        int from = 0;
-        int to = 0;
-        boolean flag = true;
+    private HttpClient client;
+    private Scanner scn;
+    private String prefix;
+    private int from;
+    private int to;
+    boolean inLoop;
+    private Path workingDirectory;
 
-        while (flag) {
+    public PrntScParser() {
+        client = HttpClient.newHttpClient();
+        scn = new Scanner(System.in);
+        prefix = "";
+        inLoop = true;
+        workingDirectory = Paths.get(System.getProperty("user.dir") + System.getProperty("file.separator")
+                + "download");
+    }
+
+    public static void main(String[] args) throws IOException {
+        PrntScParser parser = new PrntScParser();
+        parser.gatherUserData();
+        parser.downloadData();
+    }
+
+    public void gatherUserData() {
+        while (inLoop) {
             try {
                 System.out.print("От: ");
                 from = scn.nextInt();
@@ -36,12 +55,18 @@ public class Main {
             } catch (Throwable e) {
                 System.out.println(e.getMessage());
             }
-            flag = (prefix.length() != 2) || !(from < to);
-            if (flag) {
-                System.out.println("Длина префикса - две латинские буквы, числа - от 0 до 9999");
+            inLoop = !((from > -1) && (to > -1) && (from <= to) && prefix.matches("[a-z]{2}"));
+            if (inLoop) {
+                System.out.println("Длина префикса - две прописные латинские буквы, числа - от 0 до 9999");
             }
         }
+    }
 
+    public void downloadData() throws IOException {
+        if (!Files.exists(workingDirectory)) {
+            Files.createDirectory(workingDirectory);
+        }
+        System.out.println("Downloading to:" + workingDirectory);
         for (int i = from; i <= to; i++) {
             String prefixAndNumber = prefix + number4(i);
             URI uri = URI.create("https://prnt.sc/" + prefixAndNumber);
@@ -51,21 +76,22 @@ public class Main {
                 String body = response.body();
                 String address = findPictureURLAddress(body);
                 saveAsFile(address,
-                        "C:\\Users\\Anatoly\\IdeaProjects\\screenshotparser\\download\\" + prefixAndNumber + ".png");
+                        workingDirectory.toString() + System.getProperty("file.separator") +
+                                prefixAndNumber + ".png");
             } catch (RuntimeException | IOException | InterruptedException e) {
                 System.err.println(e.getMessage());
             }
         }
     }
 
-    public static HttpRequest request(URI suffix) {
+    private static HttpRequest request(URI suffix) {
         return HttpRequest.newBuilder()
                 .uri(suffix)
                 .GET()
                 .build();
     }
 
-    public static void saveAsFile(String source, String filePathName) throws MalformedURLException {
+    private static void saveAsFile(String source, String filePathName) throws MalformedURLException {
         URL url = URI.create(source).toURL();
         try (ReadableByteChannel rbc = Channels.newChannel(url.openStream());
              FileOutputStream fos = new FileOutputStream(filePathName)) {
@@ -75,7 +101,7 @@ public class Main {
         }
     }
 
-    public static String findPictureURLAddress(String requestBody) {
+    private static String findPictureURLAddress(String requestBody) {
         Pattern p = Pattern.compile("https://image\\.prntscr\\.com/.+?\\.png");
         Matcher m = p.matcher(requestBody);
 
@@ -87,22 +113,6 @@ public class Main {
     }
 
     public static String number4(int i) {
-        if (i >= 1000) {
-            return String.valueOf(i);
-        }
-
-        if (i >= 100) {
-            return String.format("0%d", i);
-        }
-
-        if (i >= 10) {
-            return String.format("00%d", i);
-        }
-
-        if (i >= 0) {
-            return String.format("000%d", i);
-        }
-
-        return "0000";
+        return String.format("%04d", i);
     }
 }
