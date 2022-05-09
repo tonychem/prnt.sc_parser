@@ -1,6 +1,7 @@
 package com.company;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -20,26 +21,38 @@ public class Main {
             System.out.println(number4(i));
             HttpResponse<String> response = client.send(request(uri), HttpResponse.BodyHandlers.ofString());
             String body = response.body();
-            Pattern p = Pattern.compile("https://image\\.prntscr\\.com/.+?\\.png");
-            Matcher m = p.matcher(body);
-            if (m.find()) {
-                URL url = URI.create(m.group()).toURL();
-                try (ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-                     FileOutputStream fos = new FileOutputStream("C:\\Users\\Anatoly\\IdeaProjects\\screenshotparser\\download\\" + i + ".png")) {
-                    fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-                } catch (IOException e) {
-                    System.out.println(e.getMessage());
-                }
-            }
+            String address = findPictureURLAddress(body);
+            saveAsFile(address,
+                    "C:\\Users\\Anatoly\\IdeaProjects\\screenshotparser\\download\\" + i + ".png");
         }
     }
 
     public static HttpRequest request(URI suffix) {
-        HttpRequest request = HttpRequest.newBuilder()
+        return HttpRequest.newBuilder()
                 .uri(suffix)
                 .GET()
                 .build();
-        return request;
+    }
+
+    public static void saveAsFile(String source, String filePathName) throws MalformedURLException {
+        URL url = URI.create(source).toURL();
+        try (ReadableByteChannel rbc = Channels.newChannel(url.openStream());
+             FileOutputStream fos = new FileOutputStream(filePathName)) {
+            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static String findPictureURLAddress(String requestBody) {
+        Pattern p = Pattern.compile("https://image\\.prntscr\\.com/.+?\\.png");
+        Matcher m = p.matcher(requestBody);
+
+        if (m.find()) {
+            return m.group();
+        } else {
+            throw new RuntimeException("URL NOT FOUND");
+        }
     }
 
     public static String number4(int i) {
@@ -47,15 +60,15 @@ public class Main {
             return String.valueOf(i);
         }
 
-        if (i >= 100 & i < 1000) {
+        if (i >= 100) {
             return String.format("0%d", i);
         }
 
-        if (i >= 10 & i < 100) {
+        if (i >= 10) {
             return String.format("00%d", i);
         }
 
-        if (i >= 0 & i < 10) {
+        if (i >= 0) {
             return String.format("000%d", i);
         }
 
