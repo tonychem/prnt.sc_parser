@@ -66,7 +66,7 @@ public class PrntScParser {
         if (!Files.exists(workingDirectory)) {
             Files.createDirectory(workingDirectory);
         }
-        System.out.println("Downloading to:" + workingDirectory);
+        System.out.println("Downloading to: " + workingDirectory);
         for (int i = from; i <= to; i++) {
             String prefixAndNumber = prefix + number4(i);
             URI uri = URI.create("https://prnt.sc/" + prefixAndNumber);
