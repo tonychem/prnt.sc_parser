@@ -13,7 +13,9 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -62,26 +64,35 @@ public class PrntScParser {
         }
     }
 
+    public static Set<URI> formAListOfURLs(String prefix, int from, int to) {
+        HashSet<URI> urls = new HashSet<>();
+        for (int i = from; i <= to; i++) {
+            URI uri = URI.create("https://prnt.sc/" + prefix + number4(i));
+            urls.add(uri);
+        }
+        return urls;
+    }
+
     public void downloadData() throws IOException {
         if (!Files.exists(workingDirectory)) {
             Files.createDirectory(workingDirectory);
         }
         System.out.println("Downloading to: " + workingDirectory);
-        for (int i = from; i <= to; i++) {
-            String prefixAndNumber = prefix + number4(i);
-            URI uri = URI.create("https://prnt.sc/" + prefixAndNumber);
-            System.out.println("Downloading: " + prefixAndNumber + ".png");
-            try {
-                HttpResponse<String> response = client.send(request(uri), HttpResponse.BodyHandlers.ofString());
-                String body = response.body();
-                String address = findPictureURLAddress(body);
-                saveAsFile(address,
-                        workingDirectory.toString() + System.getProperty("file.separator") +
-                                prefixAndNumber + ".png");
-            } catch (RuntimeException | IOException | InterruptedException e) {
-                System.err.println(e.getMessage());
-            }
-        }
+        formAListOfURLs(prefix, from, to).parallelStream()
+                .forEach((uri) -> {
+                    String prefixAndNumber = uri.getPath().substring(1);
+                    System.out.println("Downloading: " + prefixAndNumber + ".png");
+                    try {
+                        HttpResponse<String> response = client.send(request(uri), HttpResponse.BodyHandlers.ofString());
+                        String body = response.body();
+                        String address = findPictureURLAddress(body);
+                        saveAsFile(address,
+                                workingDirectory + System.getProperty("file.separator") +
+                                        prefixAndNumber + ".png");
+                    } catch (RuntimeException | IOException | InterruptedException e) {
+                        System.err.println(e.getMessage());
+                    }
+                });
     }
 
     private static HttpRequest request(URI suffix) {
